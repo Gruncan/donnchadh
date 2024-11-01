@@ -7,3 +7,6 @@
 [submodule "rannoch"]
 	path = rannoch
 	url = git@github.com:Gruncan/rannoch.git
+[submodule "mem-presser"]
+	path = mem-presser
+	url = git@github.com:Gruncan/mem-presser.git
