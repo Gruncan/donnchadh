@@ -1,0 +1,3 @@
+[submodule "mem-monitor"]
+	path = mem-monitor
+	url = git@github.com:Gruncan/mem-monitor.git
