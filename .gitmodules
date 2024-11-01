@@ -1,3 +1,6 @@
 [submodule "mem-monitor"]
 	path = mem-monitor
 	url = git@github.com:Gruncan/mem-monitor.git
+[submodule "meta-donn"]
+	path = meta-donn
+	url = git@github.com:Gruncan/meta-donn.git
