@@ -4,3 +4,6 @@
 [submodule "meta-donn"]
 	path = meta-donn
 	url = git@github.com:Gruncan/meta-donn.git
+[submodule "rannoch"]
+	path = rannoch
+	url = git@github.com:Gruncan/rannoch.git
