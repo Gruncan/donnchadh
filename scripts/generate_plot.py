@@ -163,10 +163,12 @@ class MemoryPlotGenerator:
 
 class MemoryDataSet:
 
-    def __init__(self, name, time, stats):
+    def __init__(self, name, time, stats, start_time, end_time):
         self.name = name
         self.time = time
         self.stats = stats
+        self.start_time = start_time
+        self.end_time = end_time
         self.filters = []
 
     def get_allocation_start_end_index(self):
@@ -203,6 +205,16 @@ class MemoryDataSet:
         self.time = self.time[:closest_index]
         for stat in self.stats.values():
             stat.data = stat.data[:closest_index]
+
+    def append_data_set(self, mds):
+        if self.start_time < mds.start_time:
+            new_times = [self.time[-1] + t for t in mds.time]
+            self.time = np.append(self.time, new_times)
+            for key in mds.stats.keys():
+                self.stats[key] = np.append(self.stats[key], mds.stats[key])
+
+            self.end_time = mds.end_time
+
 
 
 def find_next_intersection(stat1, stat2, start_index, after=True):
@@ -263,12 +275,13 @@ def read_mem_file(filename, name=None):
                     data_dictionary[k].append(int(v))
 
     stats = {key: MemoryPlotStat(key, data) for key, data in data_dictionary.items()}
+
     time_seconds = np.array([(t - times[0]).total_seconds() for t in times])
 
     if name is None:
         name = filename
 
-    return MemoryDataSet(name, time_seconds, stats)
+    return MemoryDataSet(name, time_seconds, stats, times[0], times[-1])
 
 def main():
     args = sys.argv[1:]
@@ -285,13 +298,22 @@ def main():
              'bounce', 'vmallocChunk', 'perCPU')
 
 
-    base_path = "/home/duncan/Development/Uni/Thesis/Data/proc_tracking/"
+    base_path = "/home/duncan/Development/Uni/Thesis/Data/night/"
 
-    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free.json", "Process Attached").add_filter(*stats)
+    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free3.json", "Process Attached").add_filter("pageMapped")
+    mds2: MemoryDataSet = read_mem_file(base_path + "allocation_free2.json", "Process Attached")
     # start, end = mds1.get_allocation_start_end_time()
     # pb1 = PlotBar(start, "Start")
     # pb2 = PlotBar(end, "End")
 
+    mds2.append_data_set(mds1)
+
+
+    print("Processed data:")
+    print(f" - Number of points collected: {len(mds2.time)}")
+    print(f" - Start time: {mds2.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - End time: {mds2.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - Duration (hours): {(mds2.end_time - mds1.start_time).total_seconds() / 3600}")
     # mds1.cut_end_time(end)
 
     # mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
