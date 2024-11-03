@@ -20,14 +20,14 @@ jobs:
           echo "Fetching repo info..."
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                -H "Accept: application/vnd.github.v3+json" \
-               -o repo_info.json \
+               -o docs/repo_info.json \  # Save the JSON file to the /docs folder
                "https://api.github.com/repos/Gruncan/donnchadh"
 
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add repo_info.json
+          git add docs/repo_info.json  # Stage the file from the /docs folder
           git commit -m "Update repo info"
           git push
         env:
