@@ -246,7 +246,8 @@ document.addEventListener("DOMContentLoaded", fetchRepoInfo);
             const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits`);
             const data = await response.json();
 
-            const filteredCommits = data.filter(commit => commit.commit.author.url !== 'https://api.github.com/users/actions-user');
+            console.log(data)
+            const filteredCommits = data.filter(commit => commit.commit.author.email !== 'action@github.com');
 
             const commits = filteredCommits.slice(0, 10).map(commit => `
                 <p>- <a href="${commit.html_url}" target="_blank">${commit.sha.slice(0, 7)}</a>: ${commit.commit.message}</p>

@@ -20,7 +20,7 @@ jobs:
           echo "Fetching repo info..."
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                -H "Accept: application/vnd.github.v3+json" \
-               -o docs/repo_info.json \  # Save the JSON file to the /docs folder
+               -o docs/repo_info.json \
                "https://api.github.com/repos/Gruncan/donnchadh"
 
       - name: Commit and push changes
