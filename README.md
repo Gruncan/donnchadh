@@ -1,2 +1,3 @@
 # donnchadh
-Master thesis project
+
+More information at https://project.gruncan.dev
