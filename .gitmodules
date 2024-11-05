@@ -10,3 +10,6 @@
 [submodule "mem-presser"]
 	path = mem-presser
 	url = git@github.com:Gruncan/mem-presser.git
+[submodule "donn-eitean"]
+	path = donn-eitean
+	url = git@github.com:Gruncan/donn-eitean.git
