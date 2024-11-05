@@ -22,12 +22,14 @@ jobs:
                -H "Accept: application/vnd.github.v3+json" \
                -o docs/repo_info.json \
                "https://api.github.com/repos/Gruncan/donnchadh"
+          cp ../.gitmodules .
 
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add docs/repo_info.json  # Stage the file from the /docs folder
+          git add docs/repo_info.json
+          git add docs/.gitmodules
           git commit -m "Update repo info"
           git push
         env:
