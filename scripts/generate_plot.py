@@ -1,7 +1,8 @@
+import threading
 from datetime import datetime
 import sys
 import json
-from pathlib import Path
+import os
 
 
 import numpy as np
@@ -13,7 +14,7 @@ import matplotlib.pyplot as plt
 import mplcursors
 import mpld3
 
-MU = 'Memory Used'
+MU = 'Memory-Used'
 
 
 class PlotBar:
@@ -74,13 +75,23 @@ class MemoryPlotGenerator:
         self.start_bar = None
         self.end_bar = None
         self.bars = []
-        self.filters = None
 
 
     def add_start_end_bars(self, start_bar, end_bar):
         self.start_bar = start_bar
         self.end_bar = end_bar
 
+    def add_filter(self, *f):
+        for data in self.data_sets:
+            data.add_filter(*f)
+
+    def remove_filter(self, *f):
+        for data in self.data_sets:
+            data.remove_filter(*f)
+
+    def clear_filter(self):
+        for data in self.data_sets:
+            data.filter = None
 
     def __generic_plot(self):
         fig, ax = plt.subplots(figsize=(16, 9))
@@ -98,30 +109,30 @@ class MemoryPlotGenerator:
         ax.set_ylabel(self.y_label)
         ax.legend()
 
-        cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
-
-        @cursor.connect("add")
-        def on_click(sel):
-            for l in lines:
-                l.set_linewidth(1)
-                l.set_alpha(0.7)
-                l.set_markeredgewidth(1)
-
-            selected_line = sel.artist
-            selected_line.set_linewidth(3)
-            selected_line.set_alpha(1.0)
-            selected_line.set_markeredgewidth(3)
-
-            ax.figure.canvas.draw()
-
-        @cursor.connect("add")
-        def on_hover(sel):
-            x, y = sel.target
-            sel.annotation.set_text(f'{sel.artist.get_label()}: {y:.2f}')
-
-            bbox = sel.annotation.get_bbox_patch()
-            if bbox is not None:
-                bbox.set(fc="white", alpha=0.6)
+        # cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
+        #
+        # @cursor.connect("add")
+        # def on_click(sel):
+        #     for l in lines:
+        #         l.set_linewidth(1)
+        #         l.set_alpha(0.7)
+        #         l.set_markeredgewidth(1)
+        #
+        #     selected_line = sel.artist
+        #     selected_line.set_linewidth(3)
+        #     selected_line.set_alpha(1.0)
+        #     selected_line.set_markeredgewidth(3)
+        #
+        #     ax.figure.canvas.draw()
+        #
+        # @cursor.connect("add")
+        # def on_hover(sel):
+        #     x, y = sel.target
+        #     sel.annotation.set_text(f'{sel.artist.get_label()}: {y:.2f}')
+        #
+        #     bbox = sel.annotation.get_bbox_patch()
+        #     if bbox is not None:
+        #         bbox.set(fc="white", alpha=0.6)
 
 
         return fig, ax
@@ -143,7 +154,7 @@ class MemoryPlotGenerator:
         mpld3.save_html(fig, filename)
         print(f"Plot saved as {filename}")
 
-    def show_plot(self):
+    def __background_show(self):
         fig, ax = self.__generic_plot()
 
         for i, bar in enumerate(self.bars):
@@ -153,8 +164,16 @@ class MemoryPlotGenerator:
             ax.axvline(**self.start_bar.get_data())
             ax.axvline(**self.end_bar.get_data())
 
-        fig.show()
-        plt.show()
+        plt.draw()
+        plt.pause(0.1)
+
+    def show_plot(self):
+        plot_thread = threading.Thread(target=self.__background_show())
+        plot_thread.daemon = True
+        plot_thread.start()
+
+    def close_plot(self):
+        plt.close()
 
     def save_plot(self, filename):
         fig, _ = self.__generic_plot()
@@ -189,6 +208,11 @@ class MemoryDataSet:
     def add_filter(self, *values):
         self.filters += values
         return self
+
+    def remove_filter(self, *values):
+        for v in values:
+            while v in self.filters:
+                self.filters.remove(v)
 
     def get_stats(self):
         return [stat for stat in self.stats.values() if len(self.filters) == 0 or stat.name in self.filters]
@@ -283,6 +307,76 @@ def read_mem_file(filename, name=None):
 
     return MemoryDataSet(name, time_seconds, stats, times[0], times[-1])
 
+
+def mem_stat_string_builder(stats):
+    if stats is None or len(stats) == 0:
+        return ""
+    max_length = max(len(stat) for stat in stats)
+
+    sb = ""
+    for i, stat in enumerate(stats):
+        sb += f"{stat:<{max_length}}\t"
+
+        if (i + 1) % 4 == 0:
+            sb += "\n"
+    return sb
+
+
+def add_filter_handler(mpg: MemoryPlotGenerator, *args):
+    if len(args) == 0:
+        print(mem_stat_string_builder(mpg.data_sets[0].filters))
+        return
+    mpg.add_filter(*args)
+
+def remove_filter_handler(mpg: MemoryPlotGenerator, *args):
+    if len(args) == 0:
+        print(mem_stat_string_builder(mpg.data_sets[0].filters))
+        return
+    mpg.remove_filter(*args)
+
+
+
+def list_filters_handler(mpg: MemoryPlotGenerator, *_):
+    stats = mpg.data_sets[0].stat_names()
+    print(mem_stat_string_builder(stats))
+
+
+
+def help_handler(_):
+    print("Commands are:")
+    for v in commands.keys():
+        print("\t-", v)
+
+def clear_filters_handler(mpg: MemoryPlotGenerator, *_):
+    mpg.clear_filter()
+
+def show_plot_handler(mpg: MemoryPlotGenerator):
+    try:
+        mpg.close_plot()
+    except:
+        pass
+
+    mpg.show_plot()
+
+
+commands = {
+    "+f": add_filter_handler,
+    "-f": remove_filter_handler,
+    "f": list_filters_handler,
+    "h": help_handler,
+    "cf": clear_filters_handler,
+    "s": show_plot_handler,
+
+}
+
+class ErrorSuppressor:
+    def write(self, message):
+        # Suppress all messages (we can log them if needed)
+        pass
+
+    def flush(self):
+        pass
+
 def main():
     args = sys.argv[1:]
     if len(args) < 1 or len(args) > 2:
@@ -299,8 +393,8 @@ def main():
 
 
     base_path = "/home/duncan/Development/Uni/Thesis/Data/night/"
-
-    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free3.json", "Process Attached").add_filter("pageMapped")
+    print("Reading memory data...")
+    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free3.json", "Process Attached")
     mds2: MemoryDataSet = read_mem_file(base_path + "allocation_free2.json", "Process Attached")
     # start, end = mds1.get_allocation_start_end_time()
     # pb1 = PlotBar(start, "Start")
@@ -309,25 +403,27 @@ def main():
     mds2.append_data_set(mds1)
 
 
-    print("Processed data:")
+    print(f"\nProcessed data (allocation_free3.json):")
     print(f" - Number of points collected: {len(mds2.time)}")
     print(f" - Start time: {mds2.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     print(f" - End time: {mds2.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     print(f" - Duration (hours): {(mds2.end_time - mds1.start_time).total_seconds() / 3600}")
-    # mds1.cut_end_time(end)
-
-    # mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
-    # mds3 = read_mem_file(base_path + "memlog_nswap4.json", "No Swap 4").add_filter(MU)
-    # mds4 = read_mem_file(base_path + "memlog_nswap5.json", "No Swap 5").add_filter(MU)
-
-
-    print(mds1.stat_names())
 
     mpg = MemoryPlotGenerator(mds1)
+    sys.stderr = ErrorSuppressor()
+    print("\nEnter a command: ")
+    while True:
+        cmd_input = input("> ")
+        cmd, *args = cmd_input.split(" ")
+        func = commands.get(cmd)
+        if func is None:
+            help_handler(mpg)
+        else:
+            func(mpg, *args)
+
 
     # mpg.add_start_end_bars(pb1, pb2)
 
-    mpg.show_plot()
     # mpg.compile_to_html("docs/noswap_unaligned.html")
 
 
@@ -353,4 +449,5 @@ def main():
 
 
 if __name__ == '__main__':
+    sys.stderr = open(os.devnull, 'w')
     main()
