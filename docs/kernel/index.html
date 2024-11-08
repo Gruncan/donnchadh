@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kernel Memory Allocation Plots</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 100%;
+            height: auto;
+            margin: 20px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h2 {
+            color: #333;
+            margin: 0;
+            padding-bottom: 10px;
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        p {
+            font-size: 18px;
+            color: #555;
+            margin: 10px 0 0;
+            padding: 0;
+        }
+
+    </style>
+</head>
+<body>
+<h1>Kernel Memory Monitor Plots (08/11)</h1>
+
+<a href="">Raw Data available here TBC</a>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#linear10KB">Linear 10KB</a></li>
+    <li><a href="#linear100KB">Linear 10KB until fail</a></li>
+</ul>
+
+<div class="container">
+    <h2 id="linear10KB">Linear 10KB kzalloc GFP_KERNEL</h2>
+
+    <img src="kernelStackLinear.png">
+    <img src="kreClaimableLinear.png">
+    <img src="slabLinear.png">
+    <img src="memoryUsedLinear.png">
+</div>
+
+<hr>
+
+<div class="container">
+    <h2 id="linear100KB">Linear 100KB kzalloc GFP_KERNEL until fail</h2>
+
+    <img src="kernelStackLinear100k.png">
+    <img src="slabLinear100k.png">
+    <img src="memoryUsedLinear100k.png">
+
+    <p>What is interesting with this is that even after `sudo rmmod` memory is still not freed..</p>
+
+    <h3>dmesg when we fail to allocate..</h3>
+    <pre style="text-align:left">
+[ 4273.476418] DE - Allocated 10Kb (4168).
+[ 4273.980418] DE - Allocated 10Kb (4169).
+[ 4274.484423] DE - Allocated 10Kb (4170).
+[ 4274.988453] DE - Allocated 10Kb (4171).
+[ 4275.495605] DE - Allocated 10Kb (4172).
+[ 4276.004443] DE - Allocated 10Kb (4173).
+[ 4276.512826] memory_leak_thr: page allocation failure: order:5, mode:0x40dc0(GFP_KERNEL|__GFP_COMP|__GFP_ZERO), nodemask=(null),cpuset=/,mems_allowed=0
+[ 4276.512951] CPU: 1 PID: 418 Comm: memory_leak_thr Tainted: G         C O      5.15.92-v8 #1
+[ 4276.512971] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 4276.512983] Call trace:
+[ 4276.512990]  dump_backtrace+0x0/0x1c4
+[ 4276.513021]  show_stack+0x20/0x2c
+[ 4276.513039]  dump_stack_lvl+0x8c/0xb8
+[ 4276.513060]  dump_stack+0x18/0x34
+[ 4276.513077]  warn_alloc+0x120/0x1b0
+[ 4276.513097]  __alloc_pages+0xe3c/0xe60
+[ 4276.513114]  kmalloc_order+0x44/0x100
+[ 4276.513134]  kmalloc_order_trace+0x34/0x124
+[ 4276.513150]  memory_leak_thread+0x4c/0xc0 [donn_eitean]
+[ 4276.513176]  kthread+0x140/0x154
+[ 4276.513195]  ret_from_fork+0x10/0x20
+[ 4276.513325] Mem-Info:
+[ 4276.513347] active_anon:657 inactive_anon:7176 isolated_anon:0
+                active_file:3338 inactive_file:3862 isolated_file:0
+                unevictable:0 dirty:57 writeback:0
+                slab_reclaimable:3900 slab_unreclaimable:145441
+                mapped:4139 shmem:4264 pagetables:299 bounce:0
+                kernel_misc_reclaimable:0
+                free:63104 free_pcp:266 free_cma:56778
+[ 4276.513394] Node 0 active_anon:2628kB inactive_anon:28704kB active_file:13352kB inactive_file:15448kB unevictable:0kB isolated(anon):0kB isolated(file):0kB mapped:16556kB dirty:228kB writeback:0kB shmem:17056kB writeback_tmp:0kB kernel_stack:2016kB pagetables:1196kB all_unreclaimable? no
+[ 4276.513432] DMA free:252416kB min:8192kB low:10240kB high:12288kB reserved_highatomic:0KB active_anon:2628kB inactive_anon:28704kB active_file:13452kB inactive_file:15924kB unevictable:0kB writepending:228kB present:970752kB managed:932248kB mlocked:0kB bounce:0kB free_pcp:1064kB local_pcp:588kB free_cma:227112kB
+[ 4276.513478] lowmem_reserve[]: 0 0 0 0
+[ 4276.513553] DMA: 664*4kB (UEC) 396*8kB (UE) 269*16kB (UE) 210*32kB (UEC) 128*64kB (UC) 1*128kB (C) 18*256kB (C) 14*512kB (C) 6*1024kB (C) 0*2048kB 51*4096kB (C) = 251984kB
+[ 4276.513874] 11539 total pagecache pages
+[ 4276.513888] 0 pages in swap cache
+[ 4276.513902] Swap cache stats: add 0, delete 0, find 0/0
+[ 4276.513921] Free swap  = 0kB
+[ 4276.513934] Total swap = 0kB
+[ 4276.513949] 242688 pages RAM
+[ 4276.513964] 0 pages HighMem/MovableOnly
+[ 4276.513978] 9626 pages reserved
+[ 4276.513993] 65536 pages cma reserved
+[ 4276.514010] DE - Failed to allocate memory. System may be out of memory
+    </pre>
+    <hr>
+    <h3>dmesg when we rmmod</h3>
+    <pre style="text-align:left">
+[ 5204.326899] Exiting Donn Eitean module.
+[ 5204.326945] ------------[ cut here ]------------
+[ 5204.326951] WARNING: CPU: 0 PID: 524 at kernel/kthread.c:465 __kthread_bind_mask+0x2c/0x90
+[ 5204.326981] Modules linked in: donn_eitean(O-) 8021q garp stp llc brcmfmac brcmutil sha256_generic vc4 cfg80211 joydev snd_soc_hdmi_codec bcm2835_codec(C) rfkill bcm2835_v4l2(C) bcm2835_isp(C) cec v4l2_mem2mem bcm2835_mmal_vchiq(C) drm_kms_helper videobuf2_vmalloc videobuf2_dma_contig videobuf2_memops videobuf2_v4l2 videobuf2_common syscopyarea sysfillrect sysimgblt raspberrypi_hwmon fb_sys_fops videodev snd_bcm2835(C) vc_sm_cma(C) sdhci_iproc mc uio_pdrv_genirq uio sch_fq_codel nfsd drm fuse drm_panel_orientation_quirks backlight ipv6 [last unloaded: donn_eitean]
+[ 5204.327214] CPU: 0 PID: 524 Comm: rmmod Tainted: G         C O      5.15.92-v8 #1
+[ 5204.327227] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 5204.327236] pstate: 60000005 (nZCv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+[ 5204.327249] pc : __kthread_bind_mask+0x2c/0x90
+[ 5204.327261] lr : __kthread_bind_mask+0x28/0x90
+[ 5204.327272] sp : ffffffc008dabcf0
+[ 5204.327278] x29: ffffffc008dabcf0 x28: ffffff8001aa9e40 x27: 0000000000000000
+[ 5204.327300] x26: 0000000000000000 x25: 0000000000000000 x24: 0000000000000000
+[ 5204.327320] x23: 0000000000000200 x22: ffffffe8ed6f8848 x21: ffffff80034ebca0
+[ 5204.327341] x20: ffffffe8ecf0b978 x19: ffffff80034ebc80 x18: 0000000000000000
+[ 5204.327361] x17: 0000000000000000 x16: ffffffe8ec46d600 x15: 0000000000000000
+[ 5204.327382] x14: ffffffe8ed6ecac0 x13: 2e656c75646f6d20 x12: 6e6165746945206e
+[ 5204.327402] x11: ffffffe8ed681ef8 x10: ffffffe8ed681f08 x9 : ffffffe8ecef2168
+[ 5204.327423] x8 : 00000000fffff922 x7 : ffffffe8ed6d9f08 x6 : 0000000000000000
+[ 5204.327443] x5 : ffffffe8ed66a000 x4 : ffffffe8ed66a188 x3 : 0000000000000000
+[ 5204.327463] x2 : 0000000000000000 x1 : ffffff8001aa9e40 x0 : 0000000000000000
+[ 5204.327484] Call trace:
+[ 5204.327490]  __kthread_bind_mask+0x2c/0x90
+[ 5204.327502]  kthread_unpark+0xb0/0xc0
+[ 5204.327512]  kthread_stop+0x6c/0x240
+[ 5204.327524]  donn_module_cleanup+0x28/0xf40 [donn_eitean]
+[ 5204.327543]  __arm64_sys_delete_module+0x198/0x26c
+[ 5204.327557]  invoke_syscall+0x50/0x120
+[ 5204.327571]  el0_svc_common.constprop.0+0x104/0x124
+[ 5204.327585]  do_el0_svc+0x30/0xac
+[ 5204.327596]  el0_svc+0x2c/0x90
+[ 5204.327610]  el0t_64_sync_handler+0xa4/0x130
+[ 5204.327622]  el0t_64_sync+0x1a0/0x1a4
+[ 5204.327634] ---[ end trace 87e161c75d02b5ce ]---
+[ 5393.017676] hwmon hwmon1: Undervoltage detected!
+[ 5399.161696] hwmon hwmon1: Voltage normalised
+[ 5407.737797] INFO: task rmmod:524 blocked for more than 122 seconds.
+[ 5407.737845]       Tainted: G        WC O      5.15.92-v8 #1
+[ 5407.737865] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[ 5407.737883] task:rmmod           state:D stack:    0 pid:  524 ppid:   523 flags:0x00000204
+[ 5407.737924] Call trace:
+[ 5407.737939]  __switch_to+0x110/0x164
+[ 5407.737976]  __schedule+0x324/0x8b4
+[ 5407.738003]  schedule+0x70/0x12c
+[ 5407.738027]  schedule_timeout+0x18c/0x1d0
+[ 5407.738055]  wait_for_completion+0x8c/0x130
+[ 5407.738081]  kthread_stop+0x7c/0x240
+[ 5407.738106]  donn_module_cleanup+0x28/0xf40 [donn_eitean]
+[ 5407.738138]  __arm64_sys_delete_module+0x198/0x26c
+[ 5407.738165]  invoke_syscall+0x50/0x120
+[ 5407.738203]  el0_svc_common.constprop.0+0x104/0x124
+[ 5407.738229]  do_el0_svc+0x30/0xac
+[ 5407.738253]  el0_svc+0x2c/0x90
+[ 5407.738276]  el0t_64_sync_handler+0xa4/0x130
+[ 5407.738299]  el0t_64_sync+0x1a0/0x1a4
+    </pre>
+
+</div>
+
+<hr>
+
+
+</body>
+</html>

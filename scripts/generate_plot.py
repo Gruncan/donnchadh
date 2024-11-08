@@ -369,13 +369,6 @@ commands = {
 
 }
 
-class ErrorSuppressor:
-    def write(self, message):
-        # Suppress all messages (we can log them if needed)
-        pass
-
-    def flush(self):
-        pass
 
 def main():
     args = sys.argv[1:]
@@ -392,25 +385,26 @@ def main():
              'bounce', 'vmallocChunk', 'perCPU')
 
 
-    base_path = "/home/duncan/Development/Uni/Thesis/Data/night/"
+    base_path = "/home/duncan/Development/Uni/Thesis/Data/kernel/"
+    filename = "kernel_allocations4.json"
     print("Reading memory data...")
-    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free3.json", "Process Attached")
-    mds2: MemoryDataSet = read_mem_file(base_path + "allocation_free2.json", "Process Attached")
+    mds1 : MemoryDataSet = read_mem_file(base_path + filename, "Process Attached")
+    # mds2: MemoryDataSet = read_mem_file(base_path + "allocation_free2.json", "Process Attached")
     # start, end = mds1.get_allocation_start_end_time()
     # pb1 = PlotBar(start, "Start")
     # pb2 = PlotBar(end, "End")
 
-    mds2.append_data_set(mds1)
+    # mds2.append_data_set(mds1)
 
+    # mds1 = mds2
 
-    print(f"\nProcessed data (allocation_free3.json):")
-    print(f" - Number of points collected: {len(mds2.time)}")
-    print(f" - Start time: {mds2.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    print(f" - End time: {mds2.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    print(f" - Duration (hours): {(mds2.end_time - mds1.start_time).total_seconds() / 3600}")
+    print(f"\nProcessed data ({filename}):")
+    print(f" - Number of points collected: {len(mds1.time)}")
+    print(f" - Start time: {mds1.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - End time: {mds1.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - Duration (hours): {(mds1.end_time - mds1.start_time).total_seconds() / 3600}")
 
     mpg = MemoryPlotGenerator(mds1)
-    sys.stderr = ErrorSuppressor()
     print("\nEnter a command: ")
     while True:
         cmd_input = input("> ")
@@ -424,7 +418,7 @@ def main():
 
     # mpg.add_start_end_bars(pb1, pb2)
 
-    # mpg.compile_to_html("docs/noswap_unaligned.html")
+    # mpg.compile_to_html("docs/process-attached/oom_score_allocation_free.html")
 
 
     # # sk_der3 = np.gradient(sk_der2, x_seconds)
