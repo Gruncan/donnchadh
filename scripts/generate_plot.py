@@ -64,6 +64,9 @@ class MemoryPlotStat:
     def apply_func(self, func):
         self.data = func(self.data)
 
+    def add_data(self, data):
+        self.data = np.append(self.data, data)
+
 
 class MemoryPlotGenerator:
 
@@ -160,17 +163,31 @@ class MemoryPlotGenerator:
         for i, bar in enumerate(self.bars):
             ax.axvline(**bar.get_data())
 
-        if self.start_bar and self.end_bar:
+        if self.start_bar:
             ax.axvline(**self.start_bar.get_data())
+        if self.end_bar:
             ax.axvline(**self.end_bar.get_data())
+
 
         plt.draw()
         plt.pause(0.1)
 
     def show_plot(self):
-        plot_thread = threading.Thread(target=self.__background_show())
-        plot_thread.daemon = True
-        plot_thread.start()
+        fig, ax = self.__generic_plot()
+
+        for i, bar in enumerate(self.bars):
+            ax.axvline(**bar.get_data())
+
+        if self.start_bar and self.end_bar:
+            ax.axvline(**self.start_bar.get_data())
+            ax.axvline(**self.end_bar.get_data())
+
+        plt.show()
+        # self.__background_show()
+        # plot_thread = threading.Thread(target=self.__background_show())
+        # plot_thread.daemon = True
+        # plot_thread.start()
+        # return plot_thread
 
     def close_plot(self):
         plt.close()
@@ -232,12 +249,14 @@ class MemoryDataSet:
 
     def append_data_set(self, mds):
         if self.start_time < mds.start_time:
-            new_times = [self.time[-1] + t for t in mds.time]
+            offset = mds.start_time - self.end_time
+            new_times = [self.time[-1] + t + offset.seconds for t in mds.time]
             self.time = np.append(self.time, new_times)
             for key in mds.stats.keys():
-                self.stats[key] = np.append(self.stats[key], mds.stats[key])
+                self.stats[key].add_data(mds.stats[key].data)
 
             self.end_time = mds.end_time
+
 
 
 
@@ -386,34 +405,41 @@ def main():
 
 
     base_path = "/home/duncan/Development/Uni/Thesis/Data/kernel/"
-    filename = "kernel_allocations4.json"
+    filename = "kernel_allocations6.json"
     print("Reading memory data...")
-    mds1 : MemoryDataSet = read_mem_file(base_path + filename, "Process Attached")
-    # mds2: MemoryDataSet = read_mem_file(base_path + "allocation_free2.json", "Process Attached")
+    mds1 : MemoryDataSet = read_mem_file(base_path + filename, "Kernel Data")
+
+    mds2: MemoryDataSet = read_mem_file(base_path + "kernel_allocations4.json", "Kernel Data")
     # start, end = mds1.get_allocation_start_end_time()
     # pb1 = PlotBar(start, "Start")
     # pb2 = PlotBar(end, "End")
 
-    # mds2.append_data_set(mds1)
+    time_alloc_2_start = mds2.time[-1] + mds1.time[0] + (mds1.start_time - mds2.end_time).seconds
 
-    # mds1 = mds2
+    mds2.append_data_set(mds1)
 
-    print(f"\nProcessed data ({filename}):")
-    print(f" - Number of points collected: {len(mds1.time)}")
-    print(f" - Start time: {mds1.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    print(f" - End time: {mds1.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    print(f" - Duration (hours): {(mds1.end_time - mds1.start_time).total_seconds() / 3600}")
 
-    mpg = MemoryPlotGenerator(mds1)
-    print("\nEnter a command: ")
-    while True:
-        cmd_input = input("> ")
-        cmd, *args = cmd_input.split(" ")
-        func = commands.get(cmd)
-        if func is None:
-            help_handler(mpg)
-        else:
-            func(mpg, *args)
+
+    # print(f"\nProcessed data ({filename}):")
+    # print(f" - Number of points collected: {len(mds1.time)}")
+    # print(f" - Start time: {mds1.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    # print(f" - End time: {mds1.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    # print(f" - Duration (hours): {(mds1.end_time - mds1.start_time).total_seconds() / 3600}")
+    print(mds2.stat_names())
+    mds2.add_filter(MU)
+    mpg = MemoryPlotGenerator(mds2)
+    mpg.bars.append(PlotBar(time_alloc_2_start, "kalloc Start"))
+    t = mpg.show_plot()
+    # print("\nEnter a command: ")
+    # while True:
+    #     cmd_input = input("> ")
+    #     cmd, *args = cmd_input.split(" ")
+    #     func = commands.get(cmd)
+    #     if func is None:
+    #         help_handler(mpg)
+    #     else:
+    #         func(mpg, *args)
+
 
 
     # mpg.add_start_end_bars(pb1, pb2)
@@ -438,10 +464,9 @@ def main():
     #
     #
     # generate_plot(name, x_seconds, tuple(stats.items()), None, None)
-
+    # t.join()
 
 
 
 if __name__ == '__main__':
-    sys.stderr = open(os.devnull, 'w')
     main()
