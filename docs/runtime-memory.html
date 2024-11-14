@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Memory exhaustion differences</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<h1>Runtime Memory exhaustion differences (14/11)</h1>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#user-space-heap-exhaustion">User Heap Exhaustion</a></li>
+    <li><a href="#user-space-stack-exhaustion">User Stack Exhaustion</a></li>
+    <li><a href="#kernel-space-heap-exhaustion">Kernel Heap Exhaustion</a></li>
+    <li><a href="#kernel-space-stack-exhaustion">Kernel Stack Exhaustion</a></li>
+</ul>
+
+<div class="container">
+    <h2 id="user-space-heap-exhaustion">User space heap exhaustion</h2>
+    <p>This is by far the most likely, where the OS can not allocate anymore memory to a user process on the heap, despite removing cached memory and swapping (if possible).</p>
+    <p>The process causing the heap exhaustion gets killed by the OOM with signal <a href="https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html#index-SIGKILL">SIGKILL (9)</a></p>
+    <h3>Output from stdout</h3>
+    <pre style="text-align:left">
+Program terminated with signal SIGKILL, Killed.
+The program no longer exists.
+    </pre>
+    <h3>Kernel Log output</h3>
+    <p>See below is the Kernel log of the oom kill, killing program <code>a.out</code> in this case. It provides information call trace, memory usage not only of the program but others running.</p>
+    <pre style="text-align:left">
+[ 1715.604378] a.out invoked oom-killer: gfp_mask=0x1100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0
+[ 1715.604433] CPU: 2 PID: 625 Comm: a.out Tainted: G         C        5.15.92-v8 #1
+[ 1715.604451] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 1715.604462] Call trace:
+[ 1715.604469]  dump_backtrace+0x0/0x1c4
+[ 1715.604498]  show_stack+0x20/0x2c
+[ 1715.604516]  dump_stack_lvl+0x8c/0xb8
+[ 1715.604537]  dump_stack+0x18/0x34
+[ 1715.604553]  dump_header+0x50/0x1fc
+[ 1715.604569]  oom_kill_process+0x22c/0x230
+[ 1715.604585]  out_of_memory+0xf0/0x360
+[ 1715.604599]  __alloc_pages+0xd48/0xe60
+[ 1715.604619]  pagecache_get_page+0x1d8/0x4fc
+[ 1715.604638]  filemap_fault+0x638/0xa14
+[ 1715.604655]  __do_fault+0x44/0xdc
+[ 1715.604672]  __handle_mm_fault+0x364/0x9c0
+[ 1715.604688]  handle_mm_fault+0x1a0/0x284
+[ 1715.604704]  do_page_fault+0x17c/0x480
+[ 1715.604719]  do_translation_fault+0xbc/0xe0
+[ 1715.604733]  do_mem_abort+0x4c/0xc0
+[ 1715.604751]  el0_ia+0x70/0x100
+[ 1715.604765]  el0t_64_sync_handler+0x124/0x130
+[ 1715.604780]  el0t_64_sync+0x1a0/0x1a4
+[ 1715.604853] Mem-Info:
+[ 1715.604871] active_anon:218 inactive_anon:216360 isolated_anon:0
+                active_file:94 inactive_file:0 isolated_file:0
+                unevictable:0 dirty:0 writeback:0
+                slab_reclaimable:3454 slab_unreclaimable:5000
+                mapped:343 shmem:2636 pagetables:736 bounce:0
+                kernel_misc_reclaimable:0
+                free:2038 free_pcp:0 free_cma:0
+[ 1715.604914] Node 0 active_anon:872kB inactive_anon:865440kB active_file:376kB inactive_file:0kB unevictable:0kB isolated(anon):0kB isolated(file):0kB mapped:1372kB dirty:0kB writeback:0kB shmem:10544kB writeback_tmp:0kB kernel_stack:2096kB pagetables:2944kB all_unreclaimable? yes
+[ 1715.604951] DMA free:8152kB min:8192kB low:10240kB high:12288kB reserved_highatomic:0KB active_anon:872kB inactive_anon:865452kB active_file:0kB inactive_file:320kB unevictable:0kB writepending:0kB present:970752kB managed:932248kB mlocked:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB
+[ 1715.604991] lowmem_reserve[]: 0 0 0 0
+[ 1715.605067] DMA: 440*4kB (UME) 230*8kB (UME) 106*16kB (UME) 47*32kB (UME) 11*64kB (UME) 4*128kB (UME) 1*256kB (M) 0*512kB 0*1024kB 0*2048kB 0*4096kB = 8272kB
+[ 1715.605374] 2781 total pagecache pages
+[ 1715.605388] 0 pages in swap cache
+[ 1715.605402] Swap cache stats: add 0, delete 0, find 0/0
+[ 1715.605419] Free swap  = 0kB
+[ 1715.605432] Total swap = 0kB
+[ 1715.605446] 242688 pages RAM
+[ 1715.605459] 0 pages HighMem/MovableOnly
+[ 1715.605472] 9626 pages reserved
+[ 1715.605486] 65536 pages cma reserved
+[ 1715.605500] Tasks state (memory values in pages):
+[ 1715.605513] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[ 1715.605571] [    126]   999   126     1102       73    36864        0             0 rpcbind
+[ 1715.605600] [    130]     0   130    24816      442    65536        0          -250 systemd-journal
+[ 1715.605628] [    152]     0   152     5272      378    65536        0         -1000 systemd-udevd
+[ 1715.605695] [    214]   992   214    20726      121    65536        0             0 systemd-timesyn
+[ 1715.605725] [    220]     0   220      575       26    36864        0             0 atd
+[ 1715.605753] [    221]     0   221      688       63    40960        0             0 crond
+[ 1715.605779] [    222]   997   222     1378      110    45056        0          -900 dbus-daemon
+[ 1715.605807] [    223]   991   223      730      131    32768        0             0 dhcpcd
+[ 1715.605834] [    224]     0   224     1028      134    40960        0             0 sh
+[ 1715.605860] [    227]     0   227      588       41    32768        0             0 syslogd
+[ 1715.605887] [    228]     0   228      793       83    32768        0             0 dhcpcd
+[ 1715.605913] [    229]   991   229      696       66    32768        0             0 dhcpcd
+[ 1715.605940] [    230]   991   230      696       66    32768        0             0 dhcpcd
+[ 1715.605967] [    231]     0   231     2264      124    45056        0             0 systemd-logind
+[ 1715.605994] [    234]   994   234     2634      158    49152        0             0 systemd-network
+[ 1715.606022] [    251]   993   251     2313      122    53248        0             0 systemd-resolve
+[ 1715.606087] [    252]   998   252      736       41    40960        0             0 rpc.statd
+[ 1715.606115] [    253] 64371   253      583       23    32768        0             0 ninfod
+[ 1715.606141] [    256] 61563   256      553       19    32768        0             0 rdisc
+[ 1715.606177] [    259]     0   259     1773       49    36864        0             0 xinetd
+[ 1715.606204] [    263]   989   263    18789      237    53248        0             0 ntpd
+[ 1715.606231] [    313]     0   313     3109      316    49152        0             0 wpa_supplicant
+[ 1715.606258] [    345]     0   345     3105      315    49152        0             0 wpa_supplicant
+[ 1715.606292] [    519]   991   519      793       82    32768        0             0 dhcpcd
+[ 1715.606319] [    547]     0   547     2202      308    49152        0             0 sshd
+[ 1715.606346] [    549]     0   549     1028      127    45056        0             0 sh
+[ 1715.606376] [    619]     0   619    83731     4566   143360        0             0 gdb
+[ 1715.606402] [    625]     0   625   206063   205537  1667072        0             0 a.out
+[ 1715.606427] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/,task=a.out,pid=625,uid=0
+[ 1715.606557] Out of memory: Killed process 625 (a.out) total-vm:824252kB, anon-rss:822080kB, file-rss:68kB, shmem-rss:0kB, UID:0 pgtables:1628kB oom_score_adj:0
+    </pre>
+</div>
+
+<hr>
+
+<div class="container">
+    <h2 id="user-space-stack-exhaustion">User space stack exhaustion</h2>
+    <p>User space stack exhaustion is more difficult to achieve, the only way I can think of achieving this is through recursion, adding a stack buffer on to speed it up :) </p>
+    <p>User space stack exhaustion results in a Segmentation fault <a href="https://www.gnu.org/software/libc/manual/html_node/Program-Error-Signals.html#index-SIGSEGV">SIGSEGV (11)</a></p>
+    <h3>Output from GDB</h3>
+    <pre style="text-align:left">
+Program received signal SIGSEGV, Segmentation fault.
+0x0000007ff7eac9dc in ?? () from /lib/libc.so.6
+    </pre>
+    <h3>Closer look with GDB</h3>
+    <p>If we look more closely into what the status of the program is in GDB</p>
+    <pre style="text-align:left">
+(gdb) info registers
+x0             0x7fff7ffe00        549747424768
+x1             0x0                 0
+x2             0x1400              5120
+x3             0x7fff7ffe00        549747424768
+x4             0x7fff801200        549747429888
+x5             0x0                 0
+x6             0x1400              5120
+x7             0x0                 0
+x8             0x1400              5120
+x9             0x0                 0
+x10            0xa                 10
+x11            0xa                 10
+x12            0x650               1616
+x13            0x410               1040
+x14            0x0                 0
+x15            0x1f8               504
+x16            0x5555561018        366503923736
+x17            0x7ff7eac940        549620205888
+x18            0x0                 0
+x19            0x7fff801200        549747429888
+x20            0xa000              40960
+x21            0x0                 0
+x22            0xa000              40960
+x23            0x0                 0
+x24            0x1400              5120
+x25            0x0                 0
+x26            0x1400              5120
+x27            0x0                 0
+x28            0x0                 0
+x29            0x7fff801200        549747429888
+x30            0x55555508e0        366503856352
+sp             0x7fff7ffe00        0x7fff7ffe00
+pc             0x7ff7eac9dc        0x7ff7eac9dc
+cpsr           0x20000000          [ EL=0 C ]
+fpsr           0x0                 [ ]
+fpcr           0x0                 [ RMode=0 ]
+    </pre>
+    <p>As one would expect the stack pointer is close to the memory area we are segmentation faulting at</p>
+    <h3>Closer look with LTrace</h3>
+    <pre style="text-align:left">
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1614)                = 18
+memset(0x7fcade3a60, '\0', 5120)                 = 0x7fcade3a60
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1615)                = 18
+memset(0x7fcade2620, '\0', 5120)                 = 0x7fcade2620
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1616 &lt;no return ...
+--- SIGSEGV (Segmentation fault) ---
++++ killed by SIGSEGV +++
+    </pre>
+    <p>You can see that it failed directly on the middle of a line, so this is not simply due to an invalid access of memory!</p>
+</div>
+
+<hr>
+
+<div class="container">
+    <h2 id="kernel-space-heap-exhaustion">Kernel space heap exhaustion</h2>
+    <p>Kernel heap exhaustion is cause similar to user space heap exhaustion. Where the OS can't allocate any more kernel space memory</p>
+    <p>The kernel module, unlike a user space program, will not get unloaded, however will error when trying to allocate.<br>
+    Where the k-alloc.. will return a <code>NULL</code> pointer.</p>
+    <h3>Kernel Log output</h3>
+    <pre style="text-align:left">
+[ 4276.512826] memory_leak_thr: page allocation failure: order:5, mode:0x40dc0(GFP_KERNEL|__GFP_COMP|__GFP_ZERO), nodemask=(null),cpuset=/,mems_allowed=0
+[ 4276.512951] CPU: 1 PID: 418 Comm: memory_leak_thr Tainted: G         C O      5.15.92-v8 #1
+[ 4276.512971] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 4276.512983] Call trace:
+[ 4276.512990]  dump_backtrace+0x0/0x1c4
+[ 4276.513021]  show_stack+0x20/0x2c
+[ 4276.513039]  dump_stack_lvl+0x8c/0xb8
+[ 4276.513060]  dump_stack+0x18/0x34
+[ 4276.513077]  warn_alloc+0x120/0x1b0
+[ 4276.513097]  __alloc_pages+0xe3c/0xe60
+[ 4276.513114]  kmalloc_order+0x44/0x100
+[ 4276.513134]  kmalloc_order_trace+0x34/0x124
+[ 4276.513150]  memory_leak_thread+0x4c/0xc0 [donn_eitean]
+[ 4276.513176]  kthread+0x140/0x154
+[ 4276.513195]  ret_from_fork+0x10/0x20
+[ 4276.513325] Mem-Info:
+[ 4276.513347] active_anon:657 inactive_anon:7176 isolated_anon:0
+                active_file:3338 inactive_file:3862 isolated_file:0
+                unevictable:0 dirty:57 writeback:0
+                slab_reclaimable:3900 slab_unreclaimable:145441
+                mapped:4139 shmem:4264 pagetables:299 bounce:0
+                kernel_misc_reclaimable:0
+                free:63104 free_pcp:266 free_cma:56778
+[ 4276.513394] Node 0 active_anon:2628kB inactive_anon:28704kB active_file:13352kB inactive_file:15448kB unevictable:0kB isolated(anon):0kB isolated(file):0kB mapped:16556kB dirty:228kB writeback:0kB shmem:17056kB writeback_tmp:0kB kernel_stack:2016kB pagetables:1196kB all_unreclaimable? no
+[ 4276.513432] DMA free:252416kB min:8192kB low:10240kB high:12288kB reserved_highatomic:0KB active_anon:2628kB inactive_anon:28704kB active_file:13452kB inactive_file:15924kB unevictable:0kB writepending:228kB present:970752kB managed:932248kB mlocked:0kB bounce:0kB free_pcp:1064kB local_pcp:588kB free_cma:227112kB
+[ 4276.513478] lowmem_reserve[]: 0 0 0 0
+[ 4276.513553] DMA: 664*4kB (UEC) 396*8kB (UE) 269*16kB (UE) 210*32kB (UEC) 128*64kB (UC) 1*128kB (C) 18*256kB (C) 14*512kB (C) 6*1024kB (C) 0*2048kB 51*4096kB (C) = 251984kB
+[ 4276.513874] 11539 total pagecache pages
+[ 4276.513888] 0 pages in swap cache
+[ 4276.513902] Swap cache stats: add 0, delete 0, find 0/0
+[ 4276.513921] Free swap  = 0kB
+[ 4276.513934] Total swap = 0kB
+[ 4276.513949] 242688 pages RAM
+[ 4276.513964] 0 pages HighMem/MovableOnly
+[ 4276.513978] 9626 pages reserved
+[ 4276.513993] 65536 pages cma reserved
+    </pre>
+    <p>This is similar structured log to the OOM killer output</p>
+</div>
+
+<hr>
+
+<div class="container">
+    <h2 id="kernel-space-stack-exhaustion">Kernel space stack exhaustion</h2>
+    <p>This is far more difficult to achieve!</p>
+    <p>Firstly kernel stack allocations must be small enough to not entirely blow on initialisation.</p>
+    <h3><bold>If Kernel stack exhaustion happens you will know about it!!</bold></h3>
+    <p>It kernel panics and is unrecoverable, the only way is rebooting.</p>
+    <h3>Forced Kernel Log output</h3>
+    <pre style="text-align:left">
+[ 74.1757920] Insufficient stack space to handle exception!
+[ 74.1757971] ESR: 0x0000000096000047-- DABT (current EL)
+[ 74.1758060] FAR: 0xffffffc008d47c60
+[ 74.1758111] Task stack: [0xffffffc008d48000..0xffffffc008d4c000]
+[ 74.1758181] IRQ stack: [0xffffffc008008000..0xffffffc00800c000]
+[ 74.1758251] Overflow stack: [0xffffff803b1972b0..0xffffff803b1982b0]
+[ 74.1758351] CPU: 1 PID: 314 Comm: memory leak_thr Tainted: G
+[ 74.1758490] Hardware name: Raspberry Pi 3 Model B Reu 1.2 (DT)
+[ 74.1758571] pstate: 60000005 (nZCu daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+[ 74.1758701] pc : msleep+0xc/0x50
+[ 74.1758971] lr: inf_recursive+0x134/0x190 [donn_eitean]
+[ 74.1759201] sp : ffffffc008d47c80
+[ 74.1759251] x29: ffffffc008d48490 x28: 0000000000000000 x27: 0000000000000000
+[ 74.1759470] x26: 0000000000000000 x25: ffffff80071648c0 x24: 0000000000000000
+[ 74.1759650] x23: ffffffe256dd7190 x22: ffffff80072bbc80 x21: 0000000000000800
+[ 74.1759830] x20: ffffffe256dd8000 x19: ffffffe256dd9000 x18: ffffffffffffffff
+[ 74.1760021] x17: 0000000000000001 x16: ffffffeZca2efba0 x15: ffffffe2cb6401c3
+[ 74.1760201] x14: 0000000000000000 x13: ffffffeZcb6401bf x12: fffffffffffc72f7
+[ 74.1760371] x11: ffffffe2cb481ef8 x10: ffffffe2cb481f08 x9 : ffffffe256dd7134
+[ 74.1760560] x8 : 00000000ffffefff x7 : ffffffeZcb4d9f08 x6 : ffffffe2cb4d9f08
+[ 74.1760740] x5 : 0000000000000000 x4 : 0000000000000002 x3 : 0000000000000000
+[ 74.1760911] x2 : 0000000000000000 x1 : 0000000000000800 x0 : 0000000000000064
+[ 74.1761121] Kernel panic not syncing: kernel stack overflow
+[ 74.1761191] CPU: 1 PID: 314 Comm: memory_leak_thr Tainted: G
+[ 74.1761311] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 74.1761380] Call trace:
+[ 74.1761411] dump_backtrace+0x0/0x1c4
+[ 74.1761600] show_stack+0x20/0x2c
+[ 74.1761750] dump_stack_lul+0x8c/0xb8
+[ 74.1761931] dump_stack+0x18/0x34
+[ 74.1762061] panic+0x1a4/0x37c
+[ 74.1762180] nni_panic+0xb8/0xbc
+[ 74.1762311] panic_bad_stack+0x118/0x134
+[ 74.1762421] handle_bad_stack+0x34/0x60
+[ 74.1762561] _bad_stack+0x8c/0x90
+[ 74.1762661] nsleep+0xc/0x50
+[ 74.1762811] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1762971] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763120] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763280] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763431] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763730] memory_leak_thread+0x5c/0xb0 [donn_eitean]
+[ 74.1763881] kthread+0x140/0x154
+[ 74.1764020] ret_from_fork+0x10/0x20
+[ 74.1764160] SMP: stopping secondary CPUs
+[ 74.1764311] Kernel Offset: 0x22c2200000 from 0xffffffc008000000
+[ 74.1764381] PHYS_OFFSET: 0x0
+[ 74.1764421] CPU features: 0x00003401,00000842
+[ 74.1764501] Memory Linit: none
+[ 74.1812911] ---[ end Kernel panic - not syncing: kernel stack overflow ]---
+    </pre>
+    <p><i>Worth noting, this output was not a direct copy and paste (I might have mistyped something), as this output only was sent to the monitor attached and immediately died</i></p>
+
+</div>
+
+</body>
+</html>
