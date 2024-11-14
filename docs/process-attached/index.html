@@ -4,56 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Process Attached Allocation Plots</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f9f9f9;
-        }
-
-        .container {
-            max-width: 100%;
-            height: auto;
-            margin: 20px auto;
-            padding: 20px;
-            text-align: center;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-
-        h2 {
-            color: #333;
-            margin: 0;
-            padding-bottom: 10px;
-        }
-
-        .plot-container {
-            width: 100%;
-            height: 0;
-            padding-bottom: 56.25%;
-            position: relative;
-            overflow: hidden;
-        }
-
-        iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        p {
-            font-size: 18px;
-            color: #555;
-            margin: 10px 0 0;
-            padding: 0;
-        }
-
-    </style>
+    <link rel="stylesheet" type="text/css" href="../style.css">
 </head>
 <body>
 <h1>Process Attached Monitor Plots (01/11)</h1>
@@ -67,12 +18,12 @@
 
 <div class="container">
     <h2 id="overnightOOM">OOM Score</h2>
-    <ul>
-        <li>Number of points collected: 124536</li>
-        <li>Start time: 2024-11-01 21:42:28.520000</li>
-        <li>End time: 2024-11-02 15:10:24.909000</li>
-        <li>Duration (hours): 17.46566361111111</li>
-    </ul>
+    <code>
+        Number of points collected: 124536<br>
+        Start time: 2024-11-01 21:42:28.520000<br>
+        End time: 2024-11-02 15:10:24.909000<br>
+        Duration (hours): 17.46566361111111
+    </code>
 
     <div class="plot-container">
         <iframe src="oom_score_allocation_free.html"></iframe>
