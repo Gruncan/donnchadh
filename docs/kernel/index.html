@@ -15,6 +15,7 @@
 <ul>
     <li><a href="#linear10KB">Linear 10KB</a></li>
     <li><a href="#linear100KB">Linear 10KB until fail</a></li>
+    <li><a href="#reinsMod">Re-inserting kernel</a></li>
 </ul>
 
 <div class="container">
@@ -145,6 +146,22 @@
 </div>
 
 <hr>
+
+
+<div class="container">
+    <h2 id="reinsMod">Re-inserting the module..</h2>
+    <p>When we re-insert the module after the above, we continue to allocate except it is not freed from before..</p>
+    <img src="reinsKmod.png">
+
+    <h3>kreClaimable</h3>
+    <p>Interesting that the more we allocate the more can be claimed back? After the module crashes and gets removed a sudden spike down, why is this?</p>
+    <p>Then the OS slowly reclaims memory back?</p>
+    <div class="plot-container">
+        <iframe src="kreClaimableReins.html"></iframe>
+    </div>
+</div>
+
+
 
 
 </body>

@@ -67,6 +67,13 @@ class MemoryPlotStat:
     def add_data(self, data):
         self.data = np.append(self.data, data)
 
+    def __str__(self):
+        sb = f"Name: {self.name}; size: {len(self.data)}"
+
+        sb += "\n\t- ".join([str(d) for d in self.data])
+
+        return sb
+
 
 class MemoryPlotGenerator:
 
@@ -87,6 +94,8 @@ class MemoryPlotGenerator:
     def add_filter(self, *f):
         for data in self.data_sets:
             data.add_filter(*f)
+
+        return self
 
     def remove_filter(self, *f):
         for data in self.data_sets:
@@ -112,30 +121,30 @@ class MemoryPlotGenerator:
         ax.set_ylabel(self.y_label)
         ax.legend()
 
-        # cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
-        #
-        # @cursor.connect("add")
-        # def on_click(sel):
-        #     for l in lines:
-        #         l.set_linewidth(1)
-        #         l.set_alpha(0.7)
-        #         l.set_markeredgewidth(1)
-        #
-        #     selected_line = sel.artist
-        #     selected_line.set_linewidth(3)
-        #     selected_line.set_alpha(1.0)
-        #     selected_line.set_markeredgewidth(3)
-        #
-        #     ax.figure.canvas.draw()
-        #
-        # @cursor.connect("add")
-        # def on_hover(sel):
-        #     x, y = sel.target
-        #     sel.annotation.set_text(f'{sel.artist.get_label()}: {y:.2f}')
-        #
-        #     bbox = sel.annotation.get_bbox_patch()
-        #     if bbox is not None:
-        #         bbox.set(fc="white", alpha=0.6)
+        cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
+
+        @cursor.connect("add")
+        def on_click(sel):
+            for l in lines:
+                l.set_linewidth(1)
+                l.set_alpha(0.7)
+                l.set_markeredgewidth(1)
+
+            selected_line = sel.artist
+            selected_line.set_linewidth(3)
+            selected_line.set_alpha(1.0)
+            selected_line.set_markeredgewidth(3)
+
+            ax.figure.canvas.draw()
+
+        @cursor.connect("add")
+        def on_hover(sel):
+            x, y = sel.target
+            sel.annotation.set_text(f'{sel.artist.get_label()}: {y:.2f}')
+
+            bbox = sel.annotation.get_bbox_patch()
+            if bbox is not None:
+                bbox.set(fc="white", alpha=0.6)
 
 
         return fig, ax
@@ -405,66 +414,95 @@ def main():
 
 
     base_path = "/home/duncan/Development/Uni/Thesis/Data/kernel/"
-    filename = "kernel_allocations6.json"
+    base_path2 = "/home/duncan/Development/Uni/Thesis/Data/user_stack/results/"
+
     print("Reading memory data...")
-    mds1 : MemoryDataSet = read_mem_file(base_path + filename, "Kernel Data")
 
-    mds2: MemoryDataSet = read_mem_file(base_path + "kernel_allocations4.json", "Kernel Data")
-    # start, end = mds1.get_allocation_start_end_time()
-    # pb1 = PlotBar(start, "Start")
-    # pb2 = PlotBar(end, "End")
+    # mds1 = read_mem_file(base_path + "kernel_stack.json", "Kernel Stack 2Kb allocations")
+    # mds2 = read_mem_file(base_path + "stack_exhaust1.json", "se1")
+    # mds3 = read_mem_file(base_path2 + "stack_allocations1.json", "sa2")
+    # mds4 = read_mem_file(base_path2 + "stack_allocations2.json", "sa3")
+    # mds5 = read_mem_file(base_path2 + "stack_allocations3.json", "User Stack")
+    # mpg5 = MemoryPlotGenerator(mds5).add_filter(MU, "cached", "buffers")
+    # mpg5.compile_to_html("../docs/stack/total_memory_user.html")
 
-    time_alloc_2_start = mds2.time[-1] + mds1.time[0] + (mds1.start_time - mds2.end_time).seconds
+    mds2 = read_mem_file(base_path + "kernel_allocations4.json", "re-insmod")
+    mds1 = read_mem_file(base_path + "kernel_allocations6.json")
 
     mds2.append_data_set(mds1)
 
+    print(mem_stat_string_builder(mds2.stat_names()))
+
+    print(f"\nProcessed data ({filename}):")
+    print(f" - Number of points collected: {len(mds2.time)}")
+    print(f" - Start time: {mds2.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - End time: {mds2.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    print(f" - Duration (Seconds): {(mds2.end_time - mds2.start_time).total_seconds()}")
 
 
-    # print(f"\nProcessed data ({filename}):")
-    # print(f" - Number of points collected: {len(mds1.time)}")
-    # print(f" - Start time: {mds1.start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    # print(f" - End time: {mds1.end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    # print(f" - Duration (hours): {(mds1.end_time - mds1.start_time).total_seconds() / 3600}")
-    print(mds2.stat_names())
-    mds2.add_filter(MU)
-    mpg = MemoryPlotGenerator(mds2)
-    mpg.bars.append(PlotBar(time_alloc_2_start, "kalloc Start"))
-    t = mpg.show_plot()
-    # print("\nEnter a command: ")
-    # while True:
-    #     cmd_input = input("> ")
-    #     cmd, *args = cmd_input.split(" ")
-    #     func = commands.get(cmd)
-    #     if func is None:
-    #         help_handler(mpg)
-    #     else:
-    #         func(mpg, *args)
+    mpg = MemoryPlotGenerator(mds2).add_filter("slab")
 
+    mpg.show_plot()
 
+    # mpg.compile_to_html("../docs/kernel/SlabReins.html")
 
-    # mpg.add_start_end_bars(pb1, pb2)
-
-    # mpg.compile_to_html("docs/process-attached/oom_score_allocation_free.html")
-
-
-    # # sk_der3 = np.gradient(sk_der2, x_seconds)
-    # # sk_der3 = gaussian_filter1d(sk_der3, sigma=15)
-    # #
-    # #
-    # #
-    # # maxima = find_n_maxima(sk_der3[allocation_start:], sk_der1[allocation_start:], N-1)
-    # # maxima = [ima + allocation_start for ima in maxima]
-    # #
-    # # filt["sk_der1"] = sk_der1
-    # # filt["sk_der2"] = sk_der2
-    # # filt["sk_der3"] = sk_der3
+    # filenames_go = [("gooutput_1.json", "Go Memory Usage (T1)"),
+    #              ("gooutput_2.json", "Go Memory Usage (T2)"),
+    #              ("gooutput_4.json", "Go Memory Usage (T4)"),
+    #              ("gooutput_8.json", "Go Memory Usage (T8)"),
+    #              ("gooutput_16.json", "Go Memory Usage (T16)"),
+    #              ("gooutput_32.json", "Go Memory Usage (T32)"),
+    #              ("gooutput_64.json", "Go Memory Usage (T64)"),
+    #              ]
     #
-    # name = "docs/" + Path(filename).name.split(".")[0] + ".html"
-    # # generate_plot(name, x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
+    # filenames_c = [("coutput_1.json", "C Memory Usage (T1)"),
+    #                 ("coutput_2.json", "C Memory Usage (T2)"),
+    #                 ("coutput_4.json", "C Memory Usage (T4)"),
+    #                 ("coutput_8.json", "C Memory Usage (T8)"),
+    #                 ("coutput_16.json", "C Memory Usage (T16)"),
+    #                 ("coutput_32.json", "C Memory Usage (T32)"),
+    #                 ("coutput_64.json", "C Memory Usage (T64)"),
+    #                 ]
+    # ds1 = []
+    # for fname, name, in filenames_c:
+    #     ds1.append(read_mem_file(base_path + fname, name))
     #
+    # ds2 = []
+    # for fname, name, in filenames_go:
+    #     ds2.append(read_mem_file(base_path + fname, name))
     #
-    # generate_plot(name, x_seconds, tuple(stats.items()), None, None)
-    # t.join()
+    # # print(ds[0].stats["p_size"])
+    # # print(ds[0].stat_names())
+    # ds2[0].cut_end_time(39.56)
+    # # ds2[1].cut_end_time(19.85)
+    # # ds2[2].cut_end_time(10.1)
+    # # ds2[3].cut_end_time(5.1)
+    # # ds2[4].cut_end_time(2.88)
+    # # ds2[5].cut_end_time(2.14)
+    # ds2[6].cut_end_time(2.13)
+    #
+    # ds1[0].cut_end_time(38.67)
+    # # ds1[1].cut_end_time(29.70)
+    # # ds1[2].cut_end_time(17.4)
+    # # ds1[3].cut_end_time(9.5)
+    # # ds1[4].cut_end_time(5.12)
+    # # ds1[5].cut_end_time(3.38)
+    # ds1[6].cut_end_time(2.6)
+    #
+    # new_ds = [ds2[0], ds2[6], ds1[0], ds1[6]]
+    # reduce = lambda x: [v /1024 for v in x]
+    # for ds in new_ds:
+    #     ds.apply_func(reduce)
+    #
+    # mpg = MemoryPlotGenerator(ds1[6], ds2[6], ds1[0], ds2[0]).add_filter('p_size')
+    # mpg.y_label = "Memory Used (Mb)"
+    # mpg.title = "Memory Used (DS3)"
+    # mpg.show_plot()
+
+
+
+
+
 
 
 

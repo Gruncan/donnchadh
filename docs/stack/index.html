@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack Allocation Plots</title>
+    <link rel="stylesheet" type="text/css" href="../style.css">
+</head>
+<body>
+<h1>Stack Allocation Plots (14/11)</h1>
+
+<a href="">Raw Data available here TBC</a>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#userStack">User Stack</a></li>
+    <li><a href="#kernelStack">Kernel Stack</a></li>
+</ul>
+
+
+<div class="container">
+    <h2 id="userStack">User Stack</h2>
+    <code>
+       Processed data (stack_allocations1.json):<br>
+         - Number of points collected: 3045<br>
+         - Start time: 2024-11-14 09:47:05.151000<br>
+         - End time: 2024-11-14 09:49:52.651000<br>
+         - Duration (Seconds): 167.5
+    </code>
+
+
+    <h3>Total memory plot</h3>
+    <p>Can see we are not close to the limit memory limit, is there some arbitrary max value for the stack?</p>
+    <div class="plot-container">
+        <iframe src="total_memory_user.html"></iframe>
+    </div>
+
+    <h3>OOM plot</h3>
+    <p>OOM is alot different with stack allocations</p>
+    <div class="plot-container">
+        <iframe src="oom_score.html"></iframe>
+    </div>
+
+
+    <h3>We eventually SIGSEGV (output from LTrace)</h3>
+    <pre>
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1614)                = 18
+memset(0x7fcade3a60, '\0', 5120)                 = 0x7fcade3a60
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1615)                = 18
+memset(0x7fcade2620, '\0', 5120)                 = 0x7fcade2620
+usleep(100000)                                   = &lt;void&gt;
+printf("Allocations: %d\n", 1616 &lt;no return ...
+--- SIGSEGV (Segmentation fault) ---
++++ killed by SIGSEGV +++
+    </pre>
+
+</div>
+
+<hr>
+
+
+<div class="container">
+    <h2 id="kernelStack">Kernel Stack</h2>
+    <code>
+       Processed data (kernel_stack_allocation1.json): <br>
+         - Number of points collected: 572 <br>
+         - Start time: 2024-11-14 12:04:37.695000 <br>
+         - End time: 2024-11-14 12:05:10.396000 <br>
+         - Duration (Seconds): 32.701 <br>
+    </code>
+
+    <h3>Kernel stack plot</h3>
+    <p>Unsure why this is not changing?</p>
+    <div class="plot-container">
+        <iframe src="kernelStack.html"></iframe>
+    </div>
+
+    <h3>Kernel slab plot</h3>
+    <div class="plot-container">
+        <iframe src="slab.html"></iframe>
+    </div>
+
+    <h3>Kernel kreClaimable plot</h3>
+    <div class="plot-container">
+        <iframe src="kreClaimable.html"></iframe>
+    </div>
+
+    <h3>Kernel log clearly shows stack space exception however..</h3>
+    <pre style="text-align:left">
+[ 74.1757920] Insufficient stack space to handle exception!
+[ 74.1757971] ESR: 0x0000000096000047-- DABT (current EL)
+[ 74.1758060] FAR: 0xffffffc008d47c60
+[ 74.1758111] Task stack: [0xffffffc008d48000..0xffffffc008d4c000]
+[ 74.1758181] IRQ stack: [0xffffffc008008000..0xffffffc00800c000]
+[ 74.1758251] Overflow stack: [0xffffff803b1972b0..0xffffff803b1982b0]
+[ 74.1758351] CPU: 1 PID: 314 Comm: memory leak_thr Tainted: G
+[ 74.1758490] Hardware name: Raspberry Pi 3 Model B Reu 1.2 (DT)
+[ 74.1758571] pstate: 60000005 (nZCu daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+[ 74.1758701] pc : msleep+0xc/0x50
+[ 74.1758971] lr: inf_recursive+0x134/0x190 [donn_eitean]
+[ 74.1759201] sp : ffffffc008d47c80
+[ 74.1759251] x29: ffffffc008d48490 x28: 0000000000000000 x27: 0000000000000000
+[ 74.1759470] x26: 0000000000000000 x25: ffffff80071648c0 x24: 0000000000000000
+[ 74.1759650] x23: ffffffe256dd7190 x22: ffffff80072bbc80 x21: 0000000000000800
+[ 74.1759830] x20: ffffffe256dd8000 x19: ffffffe256dd9000 x18: ffffffffffffffff
+[ 74.1760021] x17: 0000000000000001 x16: ffffffeZca2efba0 x15: ffffffe2cb6401c3
+[ 74.1760201] x14: 0000000000000000 x13: ffffffeZcb6401bf x12: fffffffffffc72f7
+[ 74.1760371] x11: ffffffe2cb481ef8 x10: ffffffe2cb481f08 x9 : ffffffe256dd7134
+[ 74.1760560] x8 : 00000000ffffefff x7 : ffffffeZcb4d9f08 x6 : ffffffe2cb4d9f08
+[ 74.1760740] x5 : 0000000000000000 x4 : 0000000000000002 x3 : 0000000000000000
+[ 74.1760911] x2 : 0000000000000000 x1 : 0000000000000800 x0 : 0000000000000064
+[ 74.1761121] Kernel panic not syncing: kernel stack overflow
+[ 74.1761191] CPU: 1 PID: 314 Comm: memory_leak_thr Tainted: G
+[ 74.1761311] Hardware name: Raspberry Pi 3 Model B Rev 1.2 (DT)
+[ 74.1761380] Call trace:
+[ 74.1761411] dump_backtrace+0x0/0x1c4
+[ 74.1761600] show_stack+0x20/0x2c
+[ 74.1761750] dump_stack_lul+0x8c/0xb8
+[ 74.1761931] dump_stack+0x18/0x34
+[ 74.1762061] panic+0x1a4/0x37c
+[ 74.1762180] nni_panic+0xb8/0xbc
+[ 74.1762311] panic_bad_stack+0x118/0x134
+[ 74.1762421] handle_bad_stack+0x34/0x60
+[ 74.1762561] _bad_stack+0x8c/0x90
+[ 74.1762661] nsleep+0xc/0x50
+[ 74.1762811] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1762971] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763120] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763280] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763431] inf_recursive+0x154/0x190 [donn_eitean]
+[ 74.1763730] memory_leak_thread+0x5c/0xb0 [donn_eitean]
+[ 74.1763881] kthread+0x140/0x154
+[ 74.1764020] ret_from_fork+0x10/0x20
+[ 74.1764160] SMP: stopping secondary CPUs
+[ 74.1764311] Kernel Offset: 0x22c2200000 from 0xffffffc008000000
+[ 74.1764381] PHYS_OFFSET: 0x0
+[ 74.1764421] CPU features: 0x00003401,00000842
+[ 74.1764501] Memory Linit: none
+[ 74.1812911] ---[ end Kernel panic - not syncing: kernel stack overflow ]---
+    </pre>
+
+</div>
+
+
+</body>
+</html>
