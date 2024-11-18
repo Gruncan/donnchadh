@@ -6,6 +6,9 @@ from datetime import datetime
 
 date_format = "%Y-%m-%d %H:%M:%S.%f"
 
+
+MILLISECONDS_SIG_FIG = 12
+
 VERSION = 1
 
 def encode_datetime(dt):
@@ -29,13 +32,16 @@ def encode_datetime(dt):
 
     return hex(summation)[2:]
 
+
+
 def encode_milliseconds(current_dt, prev_dt):
     obj = datetime.strptime(current_dt, date_format)
     prev_dt_obj = datetime.strptime(prev_dt, date_format)
 
-    milliseconds = (obj.microsecond - prev_dt_obj.microsecond) # This is actually milliseconds offset
-
-    return hex(milliseconds & 24)[2:]
+    milliseconds = (obj.microsecond - prev_dt_obj.microsecond) // 1000
+    milliseconds = max(0, milliseconds) # maybe require a better way to handle this.. read should be sequential?
+    milliseconds = min(milliseconds, (2 ** MILLISECONDS_SIG_FIG) - 1)
+    return hex(milliseconds)[2:].zfill(MILLISECONDS_SIG_FIG)
 
 def encode_version(vers):
     return hex(vers)[2:]
@@ -77,6 +83,7 @@ def encode_mem_file(mem_file):
         v = encode_mem_data(values)
 
         sb += v
+        prev_date = date
 
     length = len(sb)
     if length % 2 != 0:
