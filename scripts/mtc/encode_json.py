@@ -17,7 +17,7 @@ def encode_datetime(dt):
     minute_bits = obj.minute - 1
     second_bits = obj.second - 1
 
-    offsets = [7, 4, 5, 4, 6, 6]
+    offsets = [6, 4, 5, 5, 6, 6]
     datetime_bits = [year_bits, month_bits, day_bits, hour_bits, minute_bits, second_bits]
 
     summation = 0b0
