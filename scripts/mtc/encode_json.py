@@ -30,7 +30,7 @@ def encode_datetime(dt):
         v = min(bits, (2 ** os)) << offset
         summation |= v
 
-    return hex(summation)[2:]
+    return hex(summation)[2:].zfill(8)
 
 
 
@@ -41,10 +41,10 @@ def encode_milliseconds(current_dt, prev_dt):
     milliseconds = (obj.microsecond - prev_dt_obj.microsecond) // 1000
     milliseconds = max(0, milliseconds) # maybe require a better way to handle this.. read should be sequential?
     milliseconds = min(milliseconds, (2 ** MILLISECONDS_SIG_FIG) - 1)
-    return hex(milliseconds)[2:].zfill(MILLISECONDS_SIG_FIG)
+    return hex(milliseconds)[2:].zfill(MILLISECONDS_SIG_FIG//4)
 
 def encode_version(vers):
-    return hex(vers)[2:]
+    return hex(vers)[2:].zfill(1)
 
 def encode_mem_data(mem_data):
     sb = ""
@@ -53,11 +53,15 @@ def encode_mem_data(mem_data):
         sb += mem_key_table[key][2:]
         value = max(int(value), 0)
         value = min(value, (2 ** 16)-1)
-        hex_value = hex(value)[2:]
-        l = hex(len(str(value)))[2:]
-        sb += l + hex_value
+        hex_value = hex(value)[2:].zfill(4)
+        sb += hex_value
 
     return sb
+
+def encode_mem_data_length(length):
+    return hex(length)[2:].zfill(4)
+
+
 
 def encode_mem_file(mem_file):
     lines = []
@@ -82,12 +86,14 @@ def encode_mem_file(mem_file):
         values = line[date]
         v = encode_mem_data(values)
 
+        sb += encode_mem_data_length(len(v) * 4)
+
         sb += v
         prev_date = date
 
     length = len(sb)
     if length % 2 != 0:
-        sb = sb.zfill(length+1)
+        sb += "0"
 
     return sb
 
