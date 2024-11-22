@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBMPP (FFT vs GPRF Meas Swap)</title>
+    <link rel="stylesheet" type="text/css" href="../style.css">
+    <style>
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .image-group {
+            text-align: center;
+        }
+
+        .image-group img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+<h1>BBMPP (FFT vs GPRF Meas Swap) (22/11)</h1>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#userStack">User Stack</a></li>
+    <li><a href="#kernelStack">Kernel Stack</a></li>
+</ul>
+
+
+<div class="container">
+    <div class="image-comparison">
+        <div class="image-group">
+            <h3>Isolated</h3>
+            <img src="MemoryUsed.png" alt="Memory Used">
+            <img src="Cached.png" alt="Cached">
+            <img src="OomScore.png" alt="OOM Score">
+            <img src="psize.png" alt="Psize">
+        </div>
+
+        <div class="image-group">
+            <h3>With Background Allocations</h3>
+            <img src="MemoryUsedWithSaw.png" alt="Memory Used With Saw">
+            <img src="CachedWithSaw.png" alt="Cached With Saw">
+            <img src="OomScoreWithSaw.png" alt="OOM Score With Saw">
+            <img src="psizeWithSaw.png" alt="Psize With Saw">
+        </div>
+    </div>
+</div>
+</body>
+</html>

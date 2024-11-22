@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Memory exhaustion differences</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th {
+    background-color: #f2f2f2;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 10px;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+    </style>
+</head>
+<body>
+<h1>Top Memory stats (22/11)</h1>
+
+<h2>Table of Contents</h2>
+<ul>
+
+</ul>
+
+<div class="container" style="text-align: left">
+    <h2 id="top">Top memory stats</h2>
+    <img src="top-stats.png">
+    <p>The three memory stats seen in top are <strong>VIRT</strong>, <strong>RES</strong>, <strong>SHR</strong></p>
+    <br>
+    <h3>How does top get these stats?</h3>
+    <p>If we run <code>strace top</code> and filter to only /proc calls</p>
+    <pre>
+7401  newfstatat(AT_FDCWD, "/proc/7255", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7255/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7255/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7265", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7265/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7265/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7266", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7266/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7266/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7307", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7307/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7307/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7311", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7311/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7311/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7355", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7355/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7355/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7398", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7398/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7398/statm", O_RDONLY) = 7
+7401  newfstatat(AT_FDCWD, "/proc/7401", {st_mode=S_IFDIR|0555, st_size=0, ...}, 0) = 0
+7401  openat(AT_FDCWD, "/proc/7401/stat", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/7401/statm", O_RDONLY) = 7
+7401  openat(AT_FDCWD, "/proc/uptime", O_RDONLY) = 6
+7401  faccessat2(AT_FDCWD, "/run/systemd/system/", F_OK, AT_SYMLINK_NOFOLLOW) = 0
+7401  openat(AT_FDCWD, "/run/systemd/sessions/", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_DIRECTORY) = 6
+7401  openat(AT_FDCWD, "/proc/loadavg", O_RDONLY) = 6
+7401  +++ exited with 0 +++
+    </pre>
+
+    <h3>What do these files contain?</h3>
+    <p> <code>/proc/pid/stat</code> contains status of the program </p>
+    <p> <code>/proc/pid/statm</code> contains memory status of the program</p>
+    <br>
+    <p>If we look at some random process's statm</p>
+    <pre>
+$cat /proc/139264/statm
+2885 1344 960 239 0 509 0
+    </pre>
+    <p>As per the kernel <a href="https://docs.kernel.org/filesystems/proc.html#id9">docs</a> the content of statm is structured as follows</p>
+    <table class="docutils align-default" id="id9">
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Content</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>size</td>
+                <td>total program size (pages)</td>
+                <td>(same as VmSize in status)</td>
+            </tr>
+            <tr>
+                <td>resident</td>
+                <td>size of memory portions (pages)</td>
+                <td>(same as VmRSS in status)</td>
+            </tr>
+            <tr>
+                <td>shared</td>
+                <td>number of pages that are shared</td>
+                <td>(i.e., backed by a file, same as RssFile+RssShmem in status)</td>
+            </tr>
+            <tr>
+                <td>trs</td>
+                <td>number of pages that are ‘code’</td>
+                <td>(not including libs; broken, includes data segment)</td>
+            </tr>
+            <tr>
+                <td>lrs</td>
+                <td>number of pages of library</td>
+                <td>(always 0 on 2.6)</td>
+            </tr>
+            <tr>
+                <td>drs</td>
+                <td>number of pages of data/stack</td>
+                <td>(including libs; broken, includes library text)</td>
+            </tr>
+            <tr>
+                <td>dt</td>
+                <td>number of dirty pages</td>
+                <td>(always 0 on 2.6)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>What does this actually mean?</h3>
+    <p>Digging a bit more, VIRT (VmSize) refers to the number of available addresses, these do not need physically memory backing.</p>
+    <p>As in if we <code>malloc</code> but do not do anything with the pointer VmSize will increase but not the Resident Set Size (RSS).</p>
+    <br>
+    <p>RES seems synonymous with RSS, so the physically backed memory of a program.
+        This doesn't take into account libraries already loaded, so will be more than the total memory allocated.</p>
+    <br>
+    <p>SHR it more obvious that it is the shared memory of the process, this is not only for inter process communication but also includes
+    Dynamic libraries that are linked.</p>
+    <p>Below is an image from The Linux Documentation Project, I have highlighted the shared frame.</p>
+    <img src="sharedframe.png">
+</div>
+
+
+<div>
+    <h2>Sources</h2>
+    <ul>
+        <li><a href="https://stackoverflow.com/a/17190631">VmSize</a></li>
+        <li><a href="https://www.baeldung.com/linux/process-memory-management">RSS memory (this is very good!)</a></li>
+        <li><a href="https://tldp.org/LDP/tlk/mm/memory.html">3.1.3 Shared Memory</a></li>
+    </ul>
+</div>
+
+
+</body>
+</html>
