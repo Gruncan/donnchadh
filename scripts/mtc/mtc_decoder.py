@@ -1,4 +1,4 @@
-from calendar import month
+import json
 from datetime import datetime
 
 
@@ -8,19 +8,29 @@ class MtcDecoderException(Exception):
 
 class MtcPoint:
 
-    def __init__(self, time_offset, ):
-        pass
+    def __init__(self, time_offset, value_map):
+        self.time_offset = time_offset
+        self.value_map = value_map
+
+    def __getitem__(self, item):
+        return self.value_map.get(item, None)
 
 
 class MtcObject:
 
-
     def __init__(self, version, date):
         self.version = version
         self.date = date
+        self.data = None
+
+
+    def set_data_points(self, mtc_data_points):
+        self.data = mtc_data_points
 
 
 class MtcDecoder:
+
+    key_map = {}
 
     def __init__(self, filename):
         self.filename = filename
@@ -38,7 +48,7 @@ class MtcDecoder:
 
     def __header_decode_check(self, header_mappings):
         if header_mappings["version"] != 1:
-            raise MtcDecoderException(f"Failed to parse: Header version {header_mappings["version"]}, not recognised!")
+            raise MtcDecoderException(f"Failed to parse: Header version {header_mappings['version']}, not recognised!")
 
         year = header_mappings["year"]
         if year < 00 or year >= 63:
@@ -72,7 +82,7 @@ class MtcDecoder:
         header_bits = [4, 6, 4, 5, 5, 6, 6]
         header_names = ["version", "year", "month", "day", "hour", "minute", "second"]
 
-        bits = self.content[start_offset:40]
+        bits = self.content[start_offset:sum(header_bits)]
 
 
         prev = start_offset
@@ -95,7 +105,7 @@ class MtcDecoder:
         millisecond_timestamp = self.content[start_offset:offset]
         return int(millisecond_timestamp, 2), offset
 
-    def __decode_mem_date_length(self, start_offset):
+    def __decode_mem_data_length(self, start_offset):
         offset = start_offset + 16
         stamp_size = self.content[start_offset:offset]
         return int(stamp_size, 2) + 1, offset
@@ -118,13 +128,32 @@ class MtcDecoder:
         if self.content is None:
             self.load_content()
 
-
         mtc_object, offset = self.__decode_header()
+        length_of_file = len(self.content)
 
-        millisecond_offset, offset = self.__decode_mem_time_offset(offset)
-        length, offset = self.__decode_mem_date_length(offset)
+        data_points = []
+        while offset <= length_of_file:
+            millisecond_offset, offset = self.__decode_mem_time_offset(offset)
+            length, offset = self.__decode_mem_data_length(offset)
+
+            mem_data, offset = self.__decode_mem_data_bytes(length, offset)
+
+            data_points.append(MtcPoint(millisecond_offset, {key:value for key, value in mem_data}))
+
+        mtc_object.set_data_points(data_points)
 
 
+        return mtc_object
+
+
+
+
+    @staticmethod
+    def load_key_map(filename):
+        with open(filename, "r") as f:
+            name_map = json.load(f)
+
+        MtcDecoder.key_map = {v:k for k, v in name_map.items()}
 
 
 
