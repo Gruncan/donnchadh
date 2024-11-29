@@ -78,8 +78,8 @@ class MtcDecoder:
         return True
 
 
-    def __decode_header(self, start_offset=0):
-        header_bits = [4, 6, 4, 5, 5, 6, 6]
+    def _decode_header(self, start_offset=0):
+        header_bits = [8, 6, 4, 5, 5, 6, 6]
         header_names = ["version", "year", "month", "day", "hour", "minute", "second"]
 
         bits = self.content[start_offset:sum(header_bits)]
@@ -88,8 +88,8 @@ class MtcDecoder:
         prev = start_offset
         mappings = {}
         for h_bits, name in zip(header_bits, header_names):
-            value = int(bits[prev:prev + h_bits], 2)
-            if name in ("month", "day"):
+            value = int(bits[prev: prev + h_bits], 2)
+            if name in ("month"):
                 value += 1
             mappings[name] = value
 
@@ -98,6 +98,7 @@ class MtcDecoder:
         self.__header_decode_check(mappings)
         version = mappings.pop("version")
 
+        mappings["year"] += 2000
         return MtcObject(version, datetime(**mappings)), prev
 
     def __decode_mem_time_offset(self, start_offset):
@@ -121,27 +122,29 @@ class MtcDecoder:
             data_key, data_value = int(data[:8], 2), int(data[8:], 2)
             mem_data.append((hex(data_key), data_value))
 
-        return mem_data
+        return mem_data, offset + length
 
 
     def decode(self):
         if self.content is None:
             self.load_content()
 
-        mtc_object, offset = self.__decode_header()
+        mtc_object, offset = self._decode_header()
         length_of_file = len(self.content)
 
         data_points = []
         while offset <= length_of_file:
-            millisecond_offset, offset = self.__decode_mem_time_offset(offset)
-            length, offset = self.__decode_mem_data_length(offset)
+            try:
+                millisecond_offset, offset = self.__decode_mem_time_offset(offset)
+                length, offset = self.__decode_mem_data_length(offset)
 
-            mem_data, offset = self.__decode_mem_data_bytes(length, offset)
+                mem_data, offset = self.__decode_mem_data_bytes(length, offset)
 
-            data_points.append(MtcPoint(millisecond_offset, {key:value for key, value in mem_data}))
+                data_points.append(MtcPoint(millisecond_offset, {key:value for key, value in mem_data}))
+            except:
+                break # We most likely broken something when force exiting
 
         mtc_object.set_data_points(data_points)
-
 
         return mtc_object
 
@@ -166,4 +169,9 @@ class MtcDecoder:
 
 
 
-MtcDecoder("memlog.mtc").decode()
+# MtcDecoder("memlog.mtc").decode()
+
+mtcd = MtcDecoder("/home/duncan/Development/Uni/Thesis/system_test.mtc")
+obj = mtcd.decode()
+print(obj)
+
