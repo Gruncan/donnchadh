@@ -1,15 +1,21 @@
 [submodule "mem-monitor"]
 	path = mem-monitor
 	url = git@github.com:Gruncan/mem-monitor.git
+	branch = master
 [submodule "meta-donn"]
 	path = meta-donn
 	url = git@github.com:Gruncan/meta-donn.git
+	branch = kirkstone
 [submodule "rannoch"]
 	path = rannoch
 	url = git@github.com:Gruncan/rannoch.git
 [submodule "mem-presser"]
 	path = mem-presser
 	url = git@github.com:Gruncan/mem-presser.git
+	branch = main
 [submodule "donn-eitean"]
 	path = donn-eitean
 	url = git@github.com:Gruncan/donn-eitean.git
+	branch = master
+[submodule "meta-donn/recipes-kernel-donn-eitean"]
+	branch = master
