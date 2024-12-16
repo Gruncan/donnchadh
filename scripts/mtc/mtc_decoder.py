@@ -103,25 +103,26 @@ class MtcDecoder:
         return MtcObject(version, datetime(**mappings)), 0
 
     def __decode_mem_time_offset(self, start_offset):
-        millisecond_timestamp = self.content[start_offset] << 8 | self.content[start_offset + 1]
+        millisecond_timestamp = int.from_bytes(self.content[start_offset: start_offset+2])
         return millisecond_timestamp, start_offset + 2
 
     def __decode_mem_data_length(self, start_offset):
-        stamp_size = self.content[start_offset] << 8 | self.content[start_offset + 1]
-        return stamp_size + 1, start_offset + 2
+        stamp_size = int.from_bytes(self.content[start_offset: start_offset + 2])
+        return stamp_size, start_offset + 2
 
-    def __decode_mem_data_bytes(self, millisecond_offset, length, offset):
+    def __decode_mem_data_bytes(self, length, offset):
 
         # if length % 24 != 0:
         #     raise MtcDecoderException(f"Failed to parse: The 16 bit length parameter has been corrupted, it must be dividable by 16!")
 
         mem_data = []
-        for i in range(0, length, 24):
-            data = self.content[offset + i: offset + i + 24]
-            data_key, data_value = int(data[:8], 2), int(data[8:], 2)
+        for i in range(0, length, 3):
+            data = self.content[offset + i: offset + i + 3]
+            data_key = int.from_bytes([data[0]])
+            data_value = int.from_bytes(data[1:])
             mem_data.append((hex(data_key), data_value))
 
-        return millisecond_offset, mem_data
+        return mem_data
 
 
     def decode(self):
@@ -132,20 +133,21 @@ class MtcDecoder:
         length_of_file = len(self.content)
 
         tasks = []
-        while offset <= length_of_file:
+        while offset < length_of_file:
             try:
                 millisecond_offset, offset = self.__decode_mem_time_offset(offset)
                 length, offset = self.__decode_mem_data_length(offset)
 
-                millisecond_offset, mem_data = self.__decode_mem_data_bytes(millisecond_offset, length, offset)
-
+                mem_data = self.__decode_mem_data_bytes(length, offset)
+                tasks.append((millisecond_offset, {k:v for k, v in mem_data}))
 
                 offset += length
             except Exception as e:
                 print(e)
                 break  # We most likely broken something when force exiting
 
-        return mtc_object, tasks
+        mtc_object.set_data_points(tasks)
+        return mtc_object
 
     @staticmethod
     def load_key_map(filename):
@@ -168,9 +170,12 @@ class MtcDecoder:
 # MtcDecoder("memlog.mtc").decode()
 
 start_time = time.time()
-mtcd = MtcDecoder("/home/duncan/Development/C/mem-monitor/cmake-build-debug/system_test8.mtc")
+mtcd = MtcDecoder("/home/duncan/Development/C/mem-monitor/full_decode_test2.mtc")
+MtcDecoder.load_key_map("v1_encoding_key_map.json")
+print(len(MtcDecoder.key_map))
+
 obj = mtcd.decode()
-print(len(obj.data))
+
 end_time = time.time()
 
 elapsed_time = end_time - start_time
